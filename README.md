@@ -3,7 +3,7 @@ This example shows how to send and receive live video streaming, using UDP proto
 ## Requiremtents
 - OpenCV
 ## Usage
-- Run `server.py`, that will capture imagens from webcam (`Ctrl+C` to exit)
+- Run `server.py`, that will capture images from webcam (`Ctrl+C` to exit)
 - Run `client.py`, that will receive frames from server and display using OpenCV window (`q` to exit)
 ## References
 - [UDP Communication](https://wiki.python.org/moin/UdpCommunication)
