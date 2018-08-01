@@ -10,14 +10,14 @@ def arg_parse():
     parser.add_argument("--video", help="Path to video file", default=0)
     parser.add_argument("--fps", help="Set video FPS", type=int, default=14)
     parser.add_argument("--gray", help="Convert video into gray scale", action="store_true")
+    parser.add_argument("--ip", help="Client IP address", default="localhost")
+    parser.add_argument("--port", help="UDP port number", type=int, default=60444)
 
     return parser.parse_args()
 
 
 def main(args):
-    host = "localhost"  # Client IP address
-    port = 60444
-    addr = (host, port)
+    address = (args.ip, args.port)
 
     cap = cv2.VideoCapture(args.video)
 
@@ -53,7 +53,7 @@ def main(args):
             if not result:
                 break
 
-            sock.sendto(encoded_img.tobytes(), addr)
+            sock.sendto(encoded_img.tobytes(), address)
 
             end = time.time()
             print('FPS: {0:0.2f}'.format(1 / (end - transmission_start)))

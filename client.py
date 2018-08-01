@@ -9,18 +9,18 @@ import numpy as np
 def arg_parse():
     parser = argparse.ArgumentParser(description='Client')
     parser.add_argument('--save', default=False, help='Save video', action='store_true')
+    parser.add_argument("--ip", help="Client IP address", default="localhost")
+    parser.add_argument("--port", help="UDP port number", type=int, default=60444)
     return parser.parse_args()
 
 
 def main(args):
-    host = "localhost"  # Client IP address
-    port = 60444
     data = b''
     buffer_size = 68736
     window = 'video streaming'
 
     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-    sock.bind((host, port))
+    sock.bind((args.ip, args.port))
 
     if args.save:
         fourcc = cv2.VideoWriter_fourcc(*'MPEG')
