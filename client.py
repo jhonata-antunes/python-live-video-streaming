@@ -14,18 +14,28 @@ def arg_parse():
     return parser.parse_args()
 
 
+def get_video_writer(frame):
+    w, h = frame.shape[1], frame.shape[0]
+    is_color = True
+    try:
+        frame.shape[2]
+    except IndexError:
+        is_color = False
+    fourcc = cv2.VideoWriter_fourcc(*'MJPG')
+    vr = cv2.VideoWriter('video.avi', fourcc, 10, (w, h), is_color)
+    return vr
+
+
 def main(args):
     data = b''
-    buffer_size = 68736
+    buffer_size = 65536
     window = 'video streaming'
+    out = None
 
     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     sock.bind((args.ip, args.port))
 
-    if args.save:
-        fourcc = cv2.VideoWriter_fourcc(*'MPEG')
-        out = cv2.VideoWriter('video.avi', fourcc, 10, (640, 480))
-    else:
+    if not args.save:
         cv2.namedWindow(window, cv2.WINDOW_NORMAL)
         cv2.resizeWindow(window, 600, 600)
 
@@ -40,6 +50,8 @@ def main(args):
                 data = data[b + 2:]
                 frame = cv2.imdecode(np.fromstring(jpg, dtype=np.uint8), cv2.IMREAD_COLOR)
                 if args.save:
+                    if out is None:
+                        out = get_video_writer(frame)
                     out.write(frame)
                 else:
                     cv2.imshow(window, frame)
