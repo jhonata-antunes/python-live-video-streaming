@@ -1,7 +1,10 @@
 # Python live video streaming
 This example shows how to send and receive live video streaming, using UDP protocol.
-## Requiremtents
-- OpenCV
+## Setup
+1. Install OpenCV library `$ sudo apt-get install libopencv-dev python-opencv`
+2. Create virtualenv `$ virtualenv --system-site-packages -p python3 venv`
+3. Activate virtualenv `$ source venv/bin/activate`
+4. Install requirements `$ pip install -r requirements.txt`
 ## Usage
 - Run `server.py`, that will capture images from webcam (`Ctrl+C` to exit)
 - Run `client.py`, that will receive frames from server and display using OpenCV window (`q` to exit)
