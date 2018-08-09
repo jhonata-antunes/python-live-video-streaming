@@ -47,8 +47,11 @@ def main(args):
             b = data.find(b'\xff\xd9')
             if a != -1 and b != -1:
                 jpg = data[a:b + 2]
-                data = data[b + 2:]
+                vt = data[b + 2: b + 2 + 8]
+                data = data[b + 2 + 8:]
+                # decode frame and video time
                 frame = cv2.imdecode(np.fromstring(jpg, dtype=np.uint8), cv2.IMREAD_COLOR)
+                vt = np.fromstring(vt, dtype=np.float64)[0]
                 if args.save:
                     if out is None:
                         out = get_video_writer(frame)

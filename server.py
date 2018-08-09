@@ -3,6 +3,7 @@ import socket
 import time
 
 import cv2
+import numpy as np
 
 
 def arg_parse():
@@ -23,9 +24,9 @@ def main(args):
 
     video_fps = cap.get(cv2.CAP_PROP_FPS)
     desired_fps = args.fps
+    max_size = 65536 - 8  # less 8 bytes of video time
     if desired_fps > video_fps:
         desired_fps = video_fps
-    max_size = 65536
 
     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 
@@ -53,7 +54,11 @@ def main(args):
             if not result:
                 break
 
-            sock.sendto(encoded_img.tobytes(), address)
+            # video time
+            vt = np.array([cap.get(cv2.CAP_PROP_POS_MSEC) / 1000], dtype=np.float64)
+            data = encoded_img.tobytes() + vt.tobytes()
+
+            sock.sendto(data, address)
 
             end = time.time()
             print('FPS: {0:0.2f}'.format(1 / (end - transmission_start)))
