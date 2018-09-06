@@ -7,73 +7,76 @@ import numpy as np
 
 
 def arg_parse():
-    parser = argparse.ArgumentParser(description='Client')
-    parser.add_argument('--save', default=False, help='Save video', action='store_true')
+    parser = argparse.ArgumentParser(description='Server')
+    parser.add_argument("--video", help="Path to video file", default=0)
+    parser.add_argument("--fps", help="Set video FPS", type=int, default=14)
+    parser.add_argument("--gray", help="Convert video into gray scale", action="store_true")
     parser.add_argument("--ip", help="Client IP address", default="localhost")
     parser.add_argument("--port", help="UDP port number", type=int, default=60444)
+
     return parser.parse_args()
 
 
-def get_video_writer(frame):
-    w, h = frame.shape[1], frame.shape[0]
-    is_color = True
-    try:
-        frame.shape[2]
-    except IndexError:
-        is_color = False
-    fourcc = cv2.VideoWriter_fourcc(*'MJPG')
-    vr = cv2.VideoWriter('video.avi', fourcc, 10, (w, h), is_color)
-    return vr
-
-
 def main(args):
-    data = b''
-    buffer_size = 65536
-    window = 'video streaming'
-    out = None
+    address = (args.ip, args.port)
+
+    cap = cv2.VideoCapture(args.video)
+
+    video_fps = cap.get(cv2.CAP_PROP_FPS)
+    desired_fps = args.fps
+    max_size = 65536 - 8  # less 8 bytes of video time
+    if desired_fps > video_fps:
+        desired_fps = video_fps
 
     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-    sock.bind((args.ip, args.port))
-
-    if not args.save:
-        cv2.namedWindow(window, cv2.WINDOW_NORMAL)
-        cv2.resizeWindow(window, 600, 600)
 
     try:
-        start = time.time()
-        while True:
-            data += sock.recv(buffer_size)
-            a = data.find(b'\xff\xd8')
-            b = data.find(b'\xff\xd9')
-            if a != -1 and b != -1:
-                jpg = data[a:b + 2]
-                vt = data[b + 2: b + 2 + 8]
-                data = data[b + 2 + 8:]
-                # decode frame and video time
-                frame = cv2.imdecode(np.fromstring(jpg, dtype=np.uint8), cv2.IMREAD_COLOR)
-                vt = np.fromstring(vt, dtype=np.float64)[0]
-                if args.save:
-                    if out is None:
-                        out = get_video_writer(frame)
-                    out.write(frame)
-                else:
-                    cv2.imshow(window, frame)
-                    if cv2.waitKey(1) & 0xFF == ord('q'):
-                        break
-                end = time.time()
-                print('FPS: {0:0.2f}'.format(1 / (end - start)))
-                start = time.time()
+        transmission_start = time.time()
+        processing_start = time.time()
+        jpg_quality = 80
+        while cap.isOpened():
+            ret, frame = cap.read()
+            if not ret:
+                break
+
+            if args.gray:
+                frame = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+
+            encode_param = [int(cv2.IMWRITE_JPEG_QUALITY), jpg_quality]
+            result, encoded_img = cv2.imencode('.jpg', frame, encode_param)
+
+            # Decrease quality until frame size is less than 65k
+            while encoded_img.nbytes > max_size:
+                jpg_quality -= 5
+                encode_param = [int(cv2.IMWRITE_JPEG_QUALITY), jpg_quality]
+                result, encoded_img = cv2.imencode('.jpg', frame, encode_param)
+
+            if not result:
+                break
+
+            # video time
+            vt = np.array([cap.get(cv2.CAP_PROP_POS_MSEC) / 1000], dtype=np.float64)
+            data = encoded_img.tobytes() + vt.tobytes()
+
+            sock.sendto(data, address)
+
+            end = time.time()
+            print('FPS: {0:0.2f}'.format(1 / (end - transmission_start)))
+            transmission_start = time.time()
+
+            # Sync
+            processing_time = end - processing_start
+            desired_time = 1 / desired_fps
+            if desired_time > processing_time:
+                time.sleep(desired_time - processing_time)
+            processing_start = time.time()
 
     except KeyboardInterrupt:
-        cv2.destroyAllWindows()
+        cap.release()
         sock.close()
-        if args.save:
-            out.release()
 
-    cv2.destroyAllWindows()
+    cap.release()
     sock.close()
-    if args.save:
-        out.release()
 
 
 if __name__ == '__main__':
